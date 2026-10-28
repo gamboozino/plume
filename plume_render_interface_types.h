@@ -21,6 +21,8 @@
 #include "android/native_window.h"
 #elif defined(__linux__)
 #include "X11/Xlib.h"
+struct wl_display;
+struct wl_surface;
 #undef None
 #undef Status
 #undef LockMask
@@ -42,11 +44,19 @@ namespace plume {
 #elif defined(SDL_VULKAN_ENABLED)
     typedef SDL_Window *RenderWindow;
 #elif defined(__linux__)
+    // An X11 window (display, window), or a Wayland surface (waylandDisplay,
+    // waylandSurface). Wayland has no window size query: getSize must report
+    // the size in pixels.
     struct RenderWindow {
-        Display* display;
-        Window window;
+        Display* display = nullptr;
+        Window window = 0;
+        struct wl_display* waylandDisplay = nullptr;
+        struct wl_surface* waylandSurface = nullptr;
+        void (*getSize)(void* userData, uint32_t* width, uint32_t* height) = nullptr;
+        void* userData = nullptr;
         bool operator==(const struct RenderWindow& rhs) const {
-            return display == rhs.display && window == rhs.window;
+            return display == rhs.display && window == rhs.window &&
+                waylandDisplay == rhs.waylandDisplay && waylandSurface == rhs.waylandSurface;
         }
         bool operator!=(const struct RenderWindow& rhs) const { return !(*this == rhs); }
     };

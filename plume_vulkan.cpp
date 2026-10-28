@@ -60,6 +60,9 @@ namespace plume {
     };
 
     static const std::unordered_set<std::string> OptionalInstanceExtensions = {
+#   if defined(__linux__) && !defined(__ANDROID__)
+        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+#   endif
 #   if defined(__APPLE__)
         // Tells the system Vulkan loader to enumerate portability drivers, if supported.
         VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME,
@@ -2099,6 +2102,27 @@ namespace plume {
             return;
         }
 #   elif defined(__linux__)
+        if (renderWindow.waylandSurface != nullptr) {
+            assert(renderWindow.waylandDisplay != nullptr);
+            assert(renderWindow.getSize != nullptr);
+            VkWaylandSurfaceCreateInfoKHR waylandCreateInfo = {};
+            waylandCreateInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+            waylandCreateInfo.display = renderWindow.waylandDisplay;
+            waylandCreateInfo.surface = renderWindow.waylandSurface;
+
+            VulkanInterface *renderInterface = commandQueue->device->renderInterface;
+            if (vkCreateWaylandSurfaceKHR == nullptr) {
+                fprintf(stderr, "VK_KHR_wayland_surface is not available.\n");
+                return;
+            }
+            res = vkCreateWaylandSurfaceKHR(renderInterface->instance, &waylandCreateInfo, nullptr, &surface);
+            if (res != VK_SUCCESS) {
+                fprintf(stderr, "vkCreateWaylandSurfaceKHR failed with error code 0x%X.\n", res);
+                return;
+            }
+        }
+        else
+        {
         assert(renderWindow.display != 0);
         assert(renderWindow.window != 0);
         VkXlibSurfaceCreateInfoKHR surfaceCreateInfo = {};
@@ -2111,6 +2135,7 @@ namespace plume {
         if (res != VK_SUCCESS) {
             fprintf(stderr, "vkCreateXlibSurfaceKHR failed with error code 0x%X.\n", res);
             return;
+        }
         }
 #   elif defined(__APPLE__)
         assert(renderWindow.window != 0);
@@ -2299,9 +2324,15 @@ namespace plume {
         // Destroy any image view references to the current swap chain.
         releaseImageViews();
 
-        // We don't actually need to query the surface capabilities but the validation layer seems to cache the valid extents from this call.
+        // The validation layer caches the valid extents from this call. The
+        // image count bounds can change after creation (e.g. once a Wayland or
+        // gamescope surface is mapped), so clamp again.
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(commandQueue->device->physicalDevice, surface, &surfaceCapabilities);
+        textureCount = std::max(textureCount, surfaceCapabilities.minImageCount);
+        if (surfaceCapabilities.maxImageCount != 0) {
+            textureCount = std::min(textureCount, surfaceCapabilities.maxImageCount);
+        }
 
         createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.surface = surface;
@@ -2438,11 +2469,16 @@ namespace plume {
         dstWidth = ANativeWindow_getWidth(renderWindow);
         dstHeight = ANativeWindow_getHeight(renderWindow);
 #   elif defined(__linux__)
-        XWindowAttributes attributes;
-        XGetWindowAttributes(renderWindow.display, renderWindow.window, &attributes);
-        // The attributes width and height members do not include the border.
-        dstWidth = attributes.width;
-        dstHeight = attributes.height;
+        if (renderWindow.waylandSurface != nullptr) {
+            renderWindow.getSize(renderWindow.userData, &dstWidth, &dstHeight);
+        }
+        else {
+            XWindowAttributes attributes;
+            XGetWindowAttributes(renderWindow.display, renderWindow.window, &attributes);
+            // The attributes width and height members do not include the border.
+            dstWidth = attributes.width;
+            dstHeight = attributes.height;
+        }
 #   elif defined(__APPLE__)
         CocoaWindowAttributes attributes;
         windowWrapper->getWindowAttributes(&attributes);
