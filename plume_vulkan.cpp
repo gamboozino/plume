@@ -2201,6 +2201,7 @@ namespace plume {
         std::vector<VkPresentModeKHR> presentModes(presentModeCount);
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &presentModeCount, presentModes.data());
         immediatePresentModeSupported = std::find(presentModes.begin(), presentModes.end(), VK_PRESENT_MODE_IMMEDIATE_KHR) != presentModes.end();
+        supportedPresentModes = presentModes;
 
         // Check if the format we requested is part of the supported surface formats.
         std::vector<VkSurfaceFormatKHR> compatibleSurfaceFormats;
@@ -2416,6 +2417,29 @@ namespace plume {
         if (immediatePresentModeSupported) {
             requiredPresentMode = vsyncEnabled ? VK_PRESENT_MODE_FIFO_KHR : VK_PRESENT_MODE_IMMEDIATE_KHR;
         }
+    }
+
+    bool VulkanSwapChain::setPresentMode(RenderPresentMode mode) {
+        VkPresentModeKHR wanted = VK_PRESENT_MODE_FIFO_KHR;
+        switch (mode) {
+        case RenderPresentMode::IMMEDIATE:
+            wanted = VK_PRESENT_MODE_IMMEDIATE_KHR;
+            break;
+        case RenderPresentMode::FIFO:
+            wanted = VK_PRESENT_MODE_FIFO_KHR;
+            break;
+        case RenderPresentMode::MAILBOX:
+            wanted = VK_PRESENT_MODE_MAILBOX_KHR;
+            break;
+        case RenderPresentMode::FIFO_RELAXED:
+            wanted = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+            break;
+        }
+
+        // Like setVsyncEnabled(), this takes effect on the next resize.
+        bool supported = std::find(supportedPresentModes.begin(), supportedPresentModes.end(), wanted) != supportedPresentModes.end();
+        requiredPresentMode = supported ? wanted : VK_PRESENT_MODE_FIFO_KHR;
+        return supported;
     }
 
     bool VulkanSwapChain::isVsyncEnabled() const {

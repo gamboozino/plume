@@ -93,6 +93,13 @@ namespace plume {
         virtual bool needsResize() const = 0;
         virtual void setVsyncEnabled(bool vsyncEnabled) = 0;
         virtual bool isVsyncEnabled() const = 0;
+
+        // How frames are presented (used from the next resize); false if the backend or
+        // surface lacks the mode, which then falls back to FIFO.
+        virtual bool setPresentMode(RenderPresentMode mode) {
+            setVsyncEnabled(mode != RenderPresentMode::IMMEDIATE);
+            return (mode == RenderPresentMode::IMMEDIATE) || (mode == RenderPresentMode::FIFO);
+        }
         virtual uint32_t getWidth() const = 0;
         virtual uint32_t getHeight() const = 0;
         virtual RenderTexture *getTexture(uint32_t textureIndex) = 0;

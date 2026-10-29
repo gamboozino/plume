@@ -243,6 +243,7 @@ namespace plume {
         std::vector<VulkanTexture> textures;
         uint64_t currentPresentId = 0;
         bool immediatePresentModeSupported = false;
+        std::vector<VkPresentModeKHR> supportedPresentModes;
         uint32_t maxFrameLatency = 0;
 
         VulkanSwapChain(VulkanCommandQueue *commandQueue, RenderWindow renderWindow, uint32_t textureCount, RenderFormat format, uint32_t maxFrameLatency);
@@ -253,6 +254,7 @@ namespace plume {
         bool needsResize() const override;
         void setVsyncEnabled(bool vsyncEnabled) override;
         bool isVsyncEnabled() const override;
+        bool setPresentMode(RenderPresentMode mode) override;
         uint32_t getWidth() const override;
         uint32_t getHeight() const override;
         RenderTexture *getTexture(uint32_t textureIndex) override;

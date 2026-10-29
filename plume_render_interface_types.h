@@ -94,6 +94,13 @@ namespace plume {
         APPLE = 0x106B,
     };
     
+    enum class RenderPresentMode {
+        IMMEDIATE,
+        FIFO,
+        MAILBOX,
+        FIFO_RELAXED
+    };
+
     enum class RenderFormat {
         UNKNOWN,
         R32G32B32A32_TYPELESS,
