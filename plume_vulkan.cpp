@@ -4152,6 +4152,15 @@ namespace plume {
         capabilities.preferHDR = memoryHeapSize > (512 * 1024 * 1024);
         capabilities.dynamicDepthBias = true;
         capabilities.queryPools = true;
+        {
+            VkPhysicalDeviceFloatControlsProperties floatControls = {};
+            floatControls.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES;
+            VkPhysicalDeviceProperties2 deviceProperties2 = {};
+            deviceProperties2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+            deviceProperties2.pNext = &floatControls;
+            vkGetPhysicalDeviceProperties2(physicalDevice, &deviceProperties2);
+            capabilities.roundingModeRTZ = (physicalDeviceProperties.apiVersion >= VK_API_VERSION_1_2) && floatControls.shaderRoundingModeRTZFloat32;
+        }
         capabilities.uma = (description.type == RenderDeviceType::INTEGRATED) && hasHostVisibleDeviceLocalMemory;
         capabilities.gpuUploadHeap = capabilities.uma;
 

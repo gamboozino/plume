@@ -1925,6 +1925,9 @@ namespace plume {
 
         // Query Pools.
         bool queryPools = false;
+
+        // Shaders may round 32-bit float math toward zero (SPIR-V RoundingModeRTZ).
+        bool roundingModeRTZ = false;
     };
 
     struct RenderInterfaceCapabilities {
