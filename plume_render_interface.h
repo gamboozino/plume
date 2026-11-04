@@ -89,6 +89,13 @@ namespace plume {
         virtual ~RenderSwapChain() { }
         virtual bool present(uint32_t textureIndex, RenderCommandSemaphore **waitSemaphores, uint32_t waitSemaphoreCount) = 0;
         virtual void wait() = 0;
+        // VK_KHR_present_wait from another thread: the ID of the last present
+        // (0 without the extension), and whether that one is on screen yet:
+        // 1 yes, 0 not yet, -1 never (an earlier swapchain's, or an error).
+        // It doesn't wait: the swapchain's calls are serialized (Vulkan
+        // synchronizes them externally), so a wait would hold up presents.
+        virtual uint64_t getPresentId() const { return 0; }
+        virtual int pollPresent(uint64_t presentId) { return -1; }
         virtual bool resize() = 0;
         virtual bool needsResize() const = 0;
         virtual void setVsyncEnabled(bool vsyncEnabled) = 0;

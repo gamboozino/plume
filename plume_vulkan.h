@@ -9,6 +9,7 @@
 
 #include "plume_render_interface.h"
 
+#include <atomic>
 #include <mutex>
 #include <set>
 #include <unordered_map>
@@ -241,7 +242,9 @@ namespace plume {
         VkPresentModeKHR requiredPresentMode = VK_PRESENT_MODE_FIFO_KHR;
         VkCompositeAlphaFlagBitsKHR pickedAlphaFlag = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
         std::vector<VulkanTexture> textures;
-        uint64_t currentPresentId = 0;
+        std::atomic<uint64_t> currentPresentId = 0;
+        std::atomic<uint64_t> firstPresentId = 1;  // this VkSwapchainKHR's first present
+        std::recursive_mutex vkMutex;  // the VkSwapchainKHR's calls, from any thread
         bool immediatePresentModeSupported = false;
         std::vector<VkPresentModeKHR> supportedPresentModes;
         uint32_t maxFrameLatency = 0;
@@ -250,6 +253,8 @@ namespace plume {
         ~VulkanSwapChain() override;
         bool present(uint32_t textureIndex, RenderCommandSemaphore **waitSemaphores, uint32_t waitSemaphoreCount) override;
         void wait() override;
+        uint64_t getPresentId() const override;
+        int pollPresent(uint64_t presentId) override;
         bool resize() override;
         bool needsResize() const override;
         void setVsyncEnabled(bool vsyncEnabled) override;

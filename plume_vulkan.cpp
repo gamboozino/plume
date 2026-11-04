@@ -2263,6 +2263,7 @@ namespace plume {
     }
 
     bool VulkanSwapChain::present(uint32_t textureIndex, RenderCommandSemaphore **waitSemaphores, uint32_t waitSemaphoreCount) {
+        const std::scoped_lock lock(vkMutex);
         thread_local std::vector<VkSemaphore> waitSemaphoresVector;
         waitSemaphoresVector.clear();
         for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
@@ -2279,10 +2280,11 @@ namespace plume {
         presentInfo.waitSemaphoreCount = uint32_t(waitSemaphoresVector.size());
 
         VkPresentIdKHR presentId = {};
+        uint64_t presentIdValue = 0;
         if (commandQueue->device->capabilities.presentWait) {
-            currentPresentId++;
+            presentIdValue = ++currentPresentId;
             presentId.sType = VK_STRUCTURE_TYPE_PRESENT_ID_KHR;
-            presentId.pPresentIds = &currentPresentId;
+            presentId.pPresentIds = &presentIdValue;
             presentId.swapchainCount = 1;
             presentInfo.pNext = &presentId;
         }
@@ -2301,20 +2303,39 @@ namespace plume {
 #else
         if ((res != VK_SUCCESS) && (res != VK_SUBOPTIMAL_KHR)) {
 #endif
+            firstPresentId = currentPresentId.load() + 1;  // (this one never reaches the screen)
             return false;
         }
 
         return true;
     }
 
+    uint64_t VulkanSwapChain::getPresentId() const {
+        return commandQueue->device->capabilities.presentWait ? currentPresentId.load() : 0;
+    }
+
+    int VulkanSwapChain::pollPresent(uint64_t presentId) {
+        const std::scoped_lock lock(vkMutex);
+        if (!commandQueue->device->capabilities.presentWait || vk == VK_NULL_HANDLE || presentId < firstPresentId ||
+            presentId > currentPresentId.load()) {
+            return -1;
+        }
+        VkResult res = vkWaitForPresentKHR(commandQueue->device->vk, vk, presentId, 0);
+        return res == VK_SUCCESS ? 1 : res == VK_TIMEOUT ? 0 : -1;
+    }
+
     void VulkanSwapChain::wait() {
-        if (commandQueue->device->capabilities.presentWait && (currentPresentId >= maxFrameLatency)) {
+        const std::scoped_lock lock(vkMutex);
+        const uint64_t id = currentPresentId.load();
+        if (commandQueue->device->capabilities.presentWait && (id >= maxFrameLatency) &&
+            (id - (maxFrameLatency - 1) >= firstPresentId)) {
             constexpr uint64_t waitTimeout = 100000000;
-            vkWaitForPresentKHR(commandQueue->device->vk, vk, currentPresentId - (maxFrameLatency - 1), waitTimeout);
+            vkWaitForPresentKHR(commandQueue->device->vk, vk, id - (maxFrameLatency - 1), waitTimeout);
         }
     }
 
     bool VulkanSwapChain::resize() {
+        const std::scoped_lock lock(vkMutex);
         getWindowSize(width, height);
 
         // Don't recreate the swap chain at all if the window doesn't have a valid size.
@@ -2352,6 +2373,7 @@ namespace plume {
         createInfo.oldSwapchain = vk;
 
         VkResult res = vkCreateSwapchainKHR(commandQueue->device->vk, &createInfo, nullptr, &vk);
+        firstPresentId = currentPresentId.load() + 1;  // the earlier ones went to the old one
         if (res != VK_SUCCESS) {
             fprintf(stderr, "vkCreateSwapchainKHR failed with error code 0x%X.\n", res);
             return false;
@@ -2512,6 +2534,7 @@ namespace plume {
     }
 
     bool VulkanSwapChain::acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) {
+        const std::scoped_lock lock(vkMutex);
         assert(signalSemaphore != nullptr);
 
         VulkanCommandSemaphore *interfaceSemaphore = static_cast<VulkanCommandSemaphore *>(signalSemaphore);
@@ -2524,6 +2547,7 @@ namespace plume {
     }
 
     void VulkanSwapChain::releaseSwapChain() {
+        const std::scoped_lock lock(vkMutex);
         if (vk != VK_NULL_HANDLE) {
             vkDestroySwapchainKHR(commandQueue->device->vk, vk, nullptr);
             vk = VK_NULL_HANDLE;
