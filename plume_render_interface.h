@@ -232,7 +232,9 @@ namespace plume {
 
     struct RenderQueryPool {
         virtual ~RenderQueryPool() { }
-        virtual void queryResults() = 0;
+        // count: only the first queries (0: all), so unwritten ones at the
+        // end don't make the call fail.
+        virtual void queryResults(uint32_t count = 0) = 0;
         virtual const uint64_t *getResults() const = 0;
         virtual uint32_t getCount() const = 0;
     };

@@ -2756,8 +2756,11 @@ namespace plume {
         vkDestroyQueryPool(device->vk, vk, nullptr);
     }
 
-    void VulkanQueryPool::queryResults() {
-	    VkResult res = vkGetQueryPoolResults(device->vk, vk, 0, uint32_t(results.size()), sizeof(uint64_t) * results.size(), results.data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+    void VulkanQueryPool::queryResults(uint32_t count) {
+        if (count == 0 || count > results.size()) {
+            count = uint32_t(results.size());
+        }
+	    VkResult res = vkGetQueryPoolResults(device->vk, vk, 0, count, sizeof(uint64_t) * count, results.data(), sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
         if (res != VK_SUCCESS) {
             fprintf(stderr, "vkGetQueryPoolResults failed with error code 0x%X.\n", res);
             return;
@@ -2788,7 +2791,8 @@ namespace plume {
         constexpr uint64_t shift_bits = 16;
         double timestampPeriod = double(device->physicalDeviceProperties.limits.timestampPeriod);
         uint64_t h = 0, l = 0;
-        for (uint64_t &result : results) {
+        for (uint32_t i = 0; i < count; i++) {
+            uint64_t &result = results[i];
             mult64to128(result, uint64_t(timestampPeriod * double(1 << shift_bits)), h, l);
             result = l;
             result >>= shift_bits;

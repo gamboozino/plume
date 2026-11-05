@@ -1791,7 +1791,7 @@ namespace plume {
         }
     }
 
-    void D3D12QueryPool::queryResults() {
+    void D3D12QueryPool::queryResults(uint32_t) {
         void *readbackData = readbackBuffer->map();
         memcpy(results.data(), readbackData, sizeof(uint64_t) * results.size());
         readbackBuffer->unmap();
