@@ -2974,6 +2974,12 @@ namespace plume {
             imageMemoryBarrier.subresourceRange.aspectMask = toAspectFlags(interfaceTexture->desc.format, interfaceTexture->desc.flags);
             imageMemoryBarriers.emplace_back(imageMemoryBarrier);
             srcStageMask |= toStageFlags(interfaceTexture->barrierStages, geometryEnabled, rtEnabled);
+            // A swapchain image's change after its acquire: ordered after the
+            // stage the acquire semaphore is waited at (its first use has no
+            // stages recorded yet).
+            if ((interfaceTexture->textureLayout == RenderTextureLayout::UNKNOWN) || (interfaceTexture->textureLayout == RenderTextureLayout::PRESENT)) {
+                srcStageMask |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+            }
             interfaceTexture->textureLayout = textureBarrier.layout;
             interfaceTexture->barrierStages = stages;
         }
@@ -4296,7 +4302,12 @@ namespace plume {
     }
 
     std::unique_ptr<RenderTexture> VulkanDevice::createTexture(const RenderTextureDesc &desc) {
-        return std::make_unique<VulkanTexture>(this, nullptr, desc);
+        // (null if the image couldn't be made, out of video memory most likely)
+        auto texture = std::make_unique<VulkanTexture>(this, nullptr, desc);
+        if (texture->vk == VK_NULL_HANDLE) {
+            return nullptr;
+        }
+        return texture;
     }
 
     std::unique_ptr<RenderAccelerationStructure> VulkanDevice::createAccelerationStructure(const RenderAccelerationStructureDesc &desc) {
