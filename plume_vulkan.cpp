@@ -4243,7 +4243,12 @@ namespace plume {
     }
 
     std::unique_ptr<RenderBuffer> VulkanDevice::createBuffer(const RenderBufferDesc &desc) {
-        return std::make_unique<VulkanBuffer>(this, nullptr, desc);
+        // (null if the allocation failed, so the caller can choose another heap)
+        auto buffer = std::make_unique<VulkanBuffer>(this, nullptr, desc);
+        if (buffer->vk == VK_NULL_HANDLE) {
+            return nullptr;
+        }
+        return buffer;
     }
 
     std::unique_ptr<RenderTexture> VulkanDevice::createTexture(const RenderTextureDesc &desc) {
