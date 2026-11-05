@@ -708,6 +708,44 @@ namespace plume {
         }
     }
 
+    // The accesses an image in this layout takes part in, for barriers that
+    // flush and invalidate only those caches (the default, MEMORY_READ |
+    // MEMORY_WRITE on both sides, flushes everything). On with
+    // NG2_PRECISE_BARRIERS=1, for comparing.
+    static VkAccessFlags toAccessFlags(RenderTextureLayout layout) {
+        switch (layout) {
+        case RenderTextureLayout::UNKNOWN:
+            return 0;
+        case RenderTextureLayout::SHADER_READ:
+            return VK_ACCESS_SHADER_READ_BIT;
+        case RenderTextureLayout::COLOR_WRITE:
+            return VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        case RenderTextureLayout::DEPTH_WRITE:
+            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        case RenderTextureLayout::DEPTH_READ:
+            return VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
+        case RenderTextureLayout::COPY_SOURCE:
+        case RenderTextureLayout::RESOLVE_SOURCE:
+            return VK_ACCESS_TRANSFER_READ_BIT;
+        case RenderTextureLayout::COPY_DEST:
+        case RenderTextureLayout::RESOLVE_DEST:
+            return VK_ACCESS_TRANSFER_WRITE_BIT;
+        case RenderTextureLayout::PRESENT:
+            return 0;
+        case RenderTextureLayout::GENERAL:
+        default:
+            return VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+        }
+    }
+
+    static bool preciseBarriers() {
+        static const bool on = [] {
+            const char *v = getenv("NG2_PRECISE_BARRIERS");
+            return v != nullptr && v[0] == '1';
+        }();
+        return on;
+    }
+
     static VkImageAspectFlags toViewAspectFlags(const RenderTextureFlags flags) {
         return (flags & RenderTextureFlag::DEPTH_TARGET) != 0 ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
     }
@@ -2919,8 +2957,14 @@ namespace plume {
             VkImageMemoryBarrier imageMemoryBarrier = {};
             imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             imageMemoryBarrier.image = interfaceTexture->vk;
-            imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; // TODO
-            imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; // TODO
+            if (preciseBarriers()) {
+                imageMemoryBarrier.srcAccessMask = toAccessFlags(interfaceTexture->textureLayout);
+                imageMemoryBarrier.dstAccessMask = toAccessFlags(textureBarrier.layout);
+            }
+            else {
+                imageMemoryBarrier.srcAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; // TODO
+                imageMemoryBarrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT; // TODO
+            }
             imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             imageMemoryBarrier.oldLayout = toImageLayout(interfaceTexture->textureLayout);
