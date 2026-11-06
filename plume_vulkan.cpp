@@ -87,6 +87,7 @@ namespace plume {
         VK_KHR_PRESENT_ID_EXTENSION_NAME,
         VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
         VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
+        VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME,
         // Vulkan spec requires this to be enabled if supported by the driver.
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
     };
@@ -3990,6 +3991,13 @@ namespace plume {
         portabilityFeatures.pNext = featuresChain;
         featuresChain = &portabilityFeatures;
 
+        VkPhysicalDeviceFragmentShaderBarycentricFeaturesKHR barycentricFeatures = {};
+        barycentricFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_BARYCENTRIC_FEATURES_KHR;
+        if (supportedOptionalExtensions.find(VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME) != supportedOptionalExtensions.end()) {
+            barycentricFeatures.pNext = featuresChain;
+            featuresChain = &barycentricFeatures;
+        }
+
         VkPhysicalDeviceFeatures2 deviceFeatures = {};
         deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         deviceFeatures.pNext = featuresChain;
@@ -4046,6 +4054,12 @@ namespace plume {
 
             presentWaitFeatures.pNext = createDeviceChain;
             createDeviceChain = &presentWaitFeatures;
+        }
+
+        capabilities.fragmentShaderBarycentric = barycentricFeatures.fragmentShaderBarycentric;
+        if (capabilities.fragmentShaderBarycentric) {
+            barycentricFeatures.pNext = createDeviceChain;
+            createDeviceChain = &barycentricFeatures;
         }
 
         const bool nullDescriptor = robustnessFeatures.nullDescriptor;

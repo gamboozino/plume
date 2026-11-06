@@ -1928,6 +1928,8 @@ namespace plume {
 
         // Shaders may round 32-bit float math toward zero (SPIR-V RoundingModeRTZ).
         bool roundingModeRTZ = false;
+        // VK_KHR_fragment_shader_barycentric (SPIR-V PerVertexKHR inputs, BaryCoordKHR).
+        bool fragmentShaderBarycentric = false;
     };
 
     struct RenderInterfaceCapabilities {
