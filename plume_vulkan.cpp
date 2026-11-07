@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cmath>
 #include <climits>
+#include <cstdlib>
 #include <unordered_map>
 
 #if DLSS_ENABLED
@@ -4067,7 +4068,10 @@ namespace plume {
 
         VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR executableFeatures = {};
         executableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR;
-        if (supportedOptionalExtensions.find(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME) != supportedOptionalExtensions.end()) {
+        // Only when the statistics are asked for (NG2_PIPELINE_STATS): a driver may keep more of
+        // each pipeline, or cache them differently, while the feature is enabled.
+        if (supportedOptionalExtensions.find(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME) != supportedOptionalExtensions.end() &&
+            std::getenv("NG2_PIPELINE_STATS") != nullptr) {
             executableFeatures.pNext = featuresChain;
             featuresChain = &executableFeatures;
         }
