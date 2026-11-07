@@ -61,6 +61,9 @@ namespace plume {
     };
 
     static const std::unordered_set<std::string> OptionalInstanceExtensions = {
+#   if defined(_WIN64)
+        VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,  // (VK_EXT_full_screen_exclusive's)
+#   endif
 #   if defined(__linux__) && !defined(__ANDROID__)
         VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
 #   endif
@@ -90,11 +93,24 @@ namespace plume {
         VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
         VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME,
         VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME,
+#   if defined(_WIN64)
+        VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
+#   endif
         // Vulkan spec requires this to be enabled if supported by the driver.
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
     };
 
     // Common functions.
+
+    // VK_EXT_full_screen_exclusive offered (Windows), and asked for (NG2_EXCLUSIVE=1):
+    // the swapchain owns the display, its presents flipped by the display
+    // itself instead of composed by the desktop's compositor.
+    static bool g_fullScreenExclusive = false;
+    // 1: the application's (acquired after creating), 2: the driver's choice.
+    static int ExclusiveWanted() {
+        const char *v = getenv("NG2_EXCLUSIVE");
+        return (g_fullScreenExclusive && v) ? atoi(v) : 0;
+    }
 
     static uint32_t roundUp(uint32_t value, uint32_t powerOf2Alignment) {
         return (value + powerOf2Alignment - 1) & ~(powerOf2Alignment - 1);
@@ -2408,11 +2424,29 @@ namespace plume {
             presentInfo.pNext = &presentId;
         }
         
+#   if defined(_WIN64)
+        if ((ExclusiveWanted() == 1) && !exclusiveHeld && (++exclusiveRetry % 180 == 0)) {
+            const std::scoped_lock lock(vkMutex);
+            VkResult got = vkAcquireFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
+            exclusiveHeld = got == VK_SUCCESS;
+            if (exclusiveHeld) {
+                fprintf(stderr, "plume: full screen exclusive: yes, on a later try\n");
+            } else if (exclusiveRetry % 1800 == 0) {
+                fprintf(stderr, "plume: full screen exclusive: still no (0x%X)\n", got);
+            }
+        }
+#   endif
         VkResult res;
         {
             const std::scoped_lock queueLock(*commandQueue->queue->mutex);
             res = vkQueuePresentKHR(commandQueue->queue->vk, &presentInfo);
         }
+#   if defined(_WIN64)
+        if (res == VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT) {
+            exclusiveHeld = false;  // (made again, by the caller's resize)
+            fprintf(stderr, "plume: full screen exclusive lost\n");
+        }
+#   endif
 
 #if defined(__APPLE__)
         // Under MoltenVK, VK_SUBOPTIMAL_KHR does not result in a valid state for rendering. We intentionally
@@ -2495,8 +2529,32 @@ namespace plume {
         createInfo.presentMode = requiredPresentMode;
         createInfo.clipped = VK_TRUE;
         createInfo.oldSwapchain = vk;
+        createInfo.pNext = nullptr;
+#   if defined(_WIN64)
+        VkSurfaceFullScreenExclusiveInfoEXT exclusiveInfo = {};
+        VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveWin32 = {};
+        const int exclusive = ExclusiveWanted();
+        if (exclusive) {
+            exclusiveWin32.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
+            exclusiveWin32.hmonitor = MonitorFromWindow(HWND(renderWindow), MONITOR_DEFAULTTONEAREST);
+            exclusiveInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
+            exclusiveInfo.pNext = &exclusiveWin32;
+            exclusiveInfo.fullScreenExclusive = exclusive == 1 ? VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
+                                                               : VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+            createInfo.pNext = &exclusiveInfo;
+        }
+#   endif
 
         VkResult res = vkCreateSwapchainKHR(commandQueue->device->vk, &createInfo, nullptr, &vk);
+#   if defined(_WIN64)
+        exclusiveHeld = false;
+        exclusiveRetry = 0;
+        if ((exclusive == 1) && (res == VK_SUCCESS)) {
+            VkResult got = vkAcquireFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
+            exclusiveHeld = got == VK_SUCCESS;
+            fprintf(stderr, "plume: full screen exclusive: %s (0x%X)\n", got == VK_SUCCESS ? "yes" : "no", got);
+        }
+#   endif
         firstPresentId = currentPresentId.load() + 1;  // the earlier ones went to the old one
         if (res != VK_SUCCESS) {
             fprintf(stderr, "vkCreateSwapchainKHR failed with error code 0x%X.\n", res);
@@ -4054,6 +4112,9 @@ namespace plume {
 
         VkPhysicalDevicePresentIdFeaturesKHR presentIdFeatures = {};
         VkPhysicalDevicePresentWaitFeaturesKHR presentWaitFeatures = {};
+#   if defined(_WIN64)
+        g_fullScreenExclusive = supportedOptionalExtensions.count(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) != 0;
+#   endif
         const bool presentWaitSupported = supportedOptionalExtensions.find(VK_KHR_PRESENT_ID_EXTENSION_NAME) != supportedOptionalExtensions.end() && supportedOptionalExtensions.find(VK_KHR_PRESENT_WAIT_EXTENSION_NAME) != supportedOptionalExtensions.end();
         if (presentWaitSupported) {
             presentIdFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;

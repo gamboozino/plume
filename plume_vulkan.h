@@ -226,6 +226,8 @@ namespace plume {
 
     struct VulkanSwapChain : RenderSwapChain {
         VkSwapchainKHR vk = VK_NULL_HANDLE;
+        bool exclusiveHeld = false;  // (VK_EXT_full_screen_exclusive, NG2_EXCLUSIVE=1)
+        uint32_t exclusiveRetry = 0;
         VulkanCommandQueue *commandQueue = nullptr;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
         RenderWindow renderWindow = {};
