@@ -1296,6 +1296,8 @@ namespace plume {
         RenderStencilFaceDesc stencilBackFace;
         RenderMultisampling multisampling;
         bool alphaToCoverageEnabled = false;
+        // Ask the driver to keep the pipeline's statistics (capabilities.pipelineExecutableInfo).
+        bool captureStatistics = false;
         RenderPrimitiveTopology primitiveTopology = RenderPrimitiveTopology::TRIANGLE_LIST;
         RenderCullMode cullMode = RenderCullMode::NONE;
         RenderFormat renderTargetFormat[MaxRenderTargets] = {};
@@ -1930,6 +1932,9 @@ namespace plume {
         bool roundingModeRTZ = false;
         // VK_KHR_fragment_shader_barycentric (SPIR-V PerVertexKHR inputs, BaryCoordKHR).
         bool fragmentShaderBarycentric = false;
+        // VK_KHR_pipeline_executable_properties: the driver's statistics of a pipeline made with
+        // RenderGraphicsPipelineDesc::captureStatistics (RenderPipeline::getStatistics).
+        bool pipelineExecutableInfo = false;
     };
 
     struct RenderInterfaceCapabilities {

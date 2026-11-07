@@ -59,6 +59,9 @@ namespace plume {
         virtual ~RenderPipeline() { }
         virtual void setName(const std::string &name) = 0;
         virtual RenderPipelineProgram getProgram(const std::string &name) const = 0;
+        // The driver's statistics of each of the pipeline's executables (registers, scratch,
+        // instructions), one line each; empty where not captured or not supported.
+        virtual std::string getStatistics() const { return {}; }
     };
 
     struct RenderPipelineLayout {

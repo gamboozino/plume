@@ -88,6 +88,7 @@ namespace plume {
         VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
         VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME,
         VK_KHR_FRAGMENT_SHADER_BARYCENTRIC_EXTENSION_NAME,
+        VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME,
         // Vulkan spec requires this to be enabled if supported by the driver.
         VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
     };
@@ -1672,12 +1673,78 @@ namespace plume {
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pipelineLayout->vk;
         pipelineInfo.renderPass = renderPass;
+        if (desc.captureStatistics && device->capabilities.pipelineExecutableInfo) {
+            pipelineInfo.flags |= VK_PIPELINE_CREATE_CAPTURE_STATISTICS_BIT_KHR;
+        }
 
         VkResult res = vkCreateGraphicsPipelines(device->vk, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &vk);
         if (res != VK_SUCCESS) {
             fprintf(stderr, "vkCreateGraphicsPipelines failed with error code 0x%X.\n", res);
             return;
         }
+    }
+
+    std::string VulkanGraphicsPipeline::getStatistics() const {
+        std::string out;
+        if ((vk == VK_NULL_HANDLE) || !device->capabilities.pipelineExecutableInfo) {
+            return out;
+        }
+
+        VkPipelineInfoKHR pipelineInfo = {};
+        pipelineInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INFO_KHR;
+        pipelineInfo.pipeline = vk;
+        uint32_t executableCount = 0;
+        if (vkGetPipelineExecutablePropertiesKHR(device->vk, &pipelineInfo, &executableCount, nullptr) != VK_SUCCESS) {
+            return out;
+        }
+
+        std::vector<VkPipelineExecutablePropertiesKHR> executables(executableCount);
+        for (VkPipelineExecutablePropertiesKHR &executable : executables) {
+            executable.sType = VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_PROPERTIES_KHR;
+        }
+
+        vkGetPipelineExecutablePropertiesKHR(device->vk, &pipelineInfo, &executableCount, executables.data());
+        for (uint32_t i = 0; i < executableCount; i++) {
+            VkPipelineExecutableInfoKHR executableInfo = {};
+            executableInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_INFO_KHR;
+            executableInfo.pipeline = vk;
+            executableInfo.executableIndex = i;
+            uint32_t statisticCount = 0;
+            vkGetPipelineExecutableStatisticsKHR(device->vk, &executableInfo, &statisticCount, nullptr);
+            std::vector<VkPipelineExecutableStatisticKHR> statistics(statisticCount);
+            for (VkPipelineExecutableStatisticKHR &statistic : statistics) {
+                statistic.sType = VK_STRUCTURE_TYPE_PIPELINE_EXECUTABLE_STATISTIC_KHR;
+            }
+
+            vkGetPipelineExecutableStatisticsKHR(device->vk, &executableInfo, &statisticCount, statistics.data());
+            out += executables[i].name;
+            out += " (subgroup " + std::to_string(executables[i].subgroupSize) + "):";
+            for (const VkPipelineExecutableStatisticKHR &statistic : statistics) {
+                out += " ";
+                out += statistic.name;
+                out += "=";
+                switch (statistic.format) {
+                case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_BOOL32_KHR:
+                    out += statistic.value.b32 ? "true" : "false";
+                    break;
+                case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_INT64_KHR:
+                    out += std::to_string(statistic.value.i64);
+                    break;
+                case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR:
+                    out += std::to_string(statistic.value.u64);
+                    break;
+                case VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_FLOAT64_KHR:
+                    out += std::to_string(statistic.value.f64);
+                    break;
+                default:
+                    break;
+                }
+            }
+
+            out += "\n";
+        }
+
+        return out;
     }
 
     VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
@@ -3998,6 +4065,13 @@ namespace plume {
             featuresChain = &barycentricFeatures;
         }
 
+        VkPhysicalDevicePipelineExecutablePropertiesFeaturesKHR executableFeatures = {};
+        executableFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_EXECUTABLE_PROPERTIES_FEATURES_KHR;
+        if (supportedOptionalExtensions.find(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME) != supportedOptionalExtensions.end()) {
+            executableFeatures.pNext = featuresChain;
+            featuresChain = &executableFeatures;
+        }
+
         VkPhysicalDeviceFeatures2 deviceFeatures = {};
         deviceFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         deviceFeatures.pNext = featuresChain;
@@ -4054,6 +4128,12 @@ namespace plume {
 
             presentWaitFeatures.pNext = createDeviceChain;
             createDeviceChain = &presentWaitFeatures;
+        }
+
+        capabilities.pipelineExecutableInfo = executableFeatures.pipelineExecutableInfo;
+        if (capabilities.pipelineExecutableInfo) {
+            executableFeatures.pNext = createDeviceChain;
+            createDeviceChain = &executableFeatures;
         }
 
         capabilities.fragmentShaderBarycentric = barycentricFeatures.fragmentShaderBarycentric;
