@@ -228,6 +228,7 @@ namespace plume {
         VkSwapchainKHR vk = VK_NULL_HANDLE;
         bool exclusiveHeld = false;  // (VK_EXT_full_screen_exclusive, NG2_EXCLUSIVE=1)
         uint32_t exclusiveRetry = 0;
+        std::atomic<bool> acquireShortWaits{false};  // (setAcquireInShortWaits)
         VulkanCommandQueue *commandQueue = nullptr;
         VkSurfaceKHR surface = VK_NULL_HANDLE;
         RenderWindow renderWindow = {};
@@ -269,6 +270,7 @@ namespace plume {
         RenderTexture *getTexture(uint32_t textureIndex) override;
         uint32_t getTextureCount() const override;
         bool acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) override;
+        void setAcquireInShortWaits(bool shortWaits) override;
         RenderWindow getWindow() const override;
         bool isEmpty() const override;
         uint32_t getRefreshRate() const override;

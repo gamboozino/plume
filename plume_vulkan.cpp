@@ -14,6 +14,7 @@
 #include <cmath>
 #include <climits>
 #include <cstdlib>
+#include <thread>
 #include <unordered_map>
 
 #if DLSS_ENABLED
@@ -2716,16 +2717,38 @@ namespace plume {
     }
 
     bool VulkanSwapChain::acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) {
-        const std::scoped_lock lock(vkMutex);
         assert(signalSemaphore != nullptr);
 
         VulkanCommandSemaphore *interfaceSemaphore = static_cast<VulkanCommandSemaphore *>(signalSemaphore);
-        VkResult res = vkAcquireNextImageKHR(commandQueue->device->vk, vk, UINT64_MAX, interfaceSemaphore->vk, VK_NULL_HANDLE, textureIndex);
+        VkResult res;
+        if (!acquireShortWaits.load()) {
+            const std::scoped_lock lock(vkMutex);
+            res = vkAcquireNextImageKHR(commandQueue->device->vk, vk, UINT64_MAX, interfaceSemaphore->vk, VK_NULL_HANDLE, textureIndex);
+        }
+        else {
+            // In short waits, the swapchain's lock let go between them: a present
+            // from another thread (which frees an image) isn't held up by an
+            // acquire waiting for one.
+            while (true) {
+                {
+                    const std::scoped_lock lock(vkMutex);
+                    res = vkAcquireNextImageKHR(commandQueue->device->vk, vk, 2000000, interfaceSemaphore->vk, VK_NULL_HANDLE, textureIndex);
+                }
+                if ((res != VK_TIMEOUT) && (res != VK_NOT_READY)) {
+                    break;
+                }
+                std::this_thread::yield();
+            }
+        }
         if ((res != VK_SUCCESS) && (res != VK_SUBOPTIMAL_KHR)) {
             return false;
         }
 
         return true;
+    }
+
+    void VulkanSwapChain::setAcquireInShortWaits(bool shortWaits) {
+        acquireShortWaits = shortWaits;
     }
 
     void VulkanSwapChain::releaseSwapChain() {

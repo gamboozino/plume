@@ -117,6 +117,9 @@ namespace plume {
         virtual RenderTexture *getTexture(uint32_t textureIndex) = 0;
         virtual uint32_t getTextureCount() const = 0;
         virtual bool acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) = 0;
+        // Acquires in short waits, the swapchain's lock let go between them (for a
+        // caller that presents from another thread); off: one wait, as before.
+        virtual void setAcquireInShortWaits(bool shortWaits) { (void)shortWaits; }
         virtual RenderWindow getWindow() const = 0;
         virtual bool isEmpty() const = 0;
 
