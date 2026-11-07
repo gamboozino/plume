@@ -2610,6 +2610,10 @@ namespace plume {
         return true;
     }
 
+    void VulkanSwapChain::setTextureCount(uint32_t count) {
+        textureCount = std::max(count, 1u);
+    }
+
     bool VulkanSwapChain::needsResize() const {
         uint32_t windowWidth, windowHeight;
         getWindowSize(windowWidth, windowHeight);

@@ -116,6 +116,8 @@ namespace plume {
         virtual uint32_t getHeight() const = 0;
         virtual RenderTexture *getTexture(uint32_t textureIndex) = 0;
         virtual uint32_t getTextureCount() const = 0;
+        // Images asked for from the next resize (the surface's limits still apply).
+        virtual void setTextureCount(uint32_t count) { (void)count; }
         virtual bool acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) = 0;
         // Acquires in short waits, the swapchain's lock let go between them (for a
         // caller that presents from another thread); off: one wait, as before.

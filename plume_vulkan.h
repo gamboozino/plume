@@ -269,6 +269,7 @@ namespace plume {
         uint32_t getHeight() const override;
         RenderTexture *getTexture(uint32_t textureIndex) override;
         uint32_t getTextureCount() const override;
+        void setTextureCount(uint32_t count) override;
         bool acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) override;
         void setAcquireInShortWaits(bool shortWaits) override;
         RenderWindow getWindow() const override;
