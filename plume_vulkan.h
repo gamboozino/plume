@@ -254,6 +254,7 @@ namespace plume {
         ~VulkanSwapChain() override;
         bool present(uint32_t textureIndex, RenderCommandSemaphore **waitSemaphores, uint32_t waitSemaphoreCount) override;
         void wait() override;
+        void setMaxFrameLatency(uint32_t maxFrameLatency) override;
         uint64_t getPresentId() const override;
         int pollPresent(uint64_t presentId) override;
         bool resize() override;

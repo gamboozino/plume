@@ -92,6 +92,8 @@ namespace plume {
         virtual ~RenderSwapChain() { }
         virtual bool present(uint32_t textureIndex, RenderCommandSemaphore **waitSemaphores, uint32_t waitSemaphoreCount) = 0;
         virtual void wait() = 0;
+        // Frames the wait leaves queued (1: the last present on screen before the next frame).
+        virtual void setMaxFrameLatency(uint32_t maxFrameLatency) { }
         // VK_KHR_present_wait from another thread: the ID of the last present
         // (0 without the extension), and whether that one is on screen yet:
         // 1 yes, 0 not yet, -1 never (an earlier swapchain's, or an error).

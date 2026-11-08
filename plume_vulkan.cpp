@@ -2443,6 +2443,11 @@ namespace plume {
         }
     }
 
+    void VulkanSwapChain::setMaxFrameLatency(uint32_t maxFrameLatency) {
+        const std::scoped_lock lock(vkMutex);
+        this->maxFrameLatency = std::max(1u, maxFrameLatency);
+    }
+
     bool VulkanSwapChain::resize() {
         const std::scoped_lock lock(vkMutex);
         getWindowSize(width, height);
