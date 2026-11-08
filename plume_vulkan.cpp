@@ -103,15 +103,10 @@ namespace plume {
 
     // Common functions.
 
-    // VK_EXT_full_screen_exclusive offered (Windows), and asked for (NG2_EXCLUSIVE=1):
-    // the swapchain owns the display, its presents flipped by the display
+    // VK_EXT_full_screen_exclusive offered (Windows): the swapchain can own the
+    // display (setFullScreenExclusive), its presents flipped by the display
     // itself instead of composed by the desktop's compositor.
     static bool g_fullScreenExclusive = false;
-    // 1: the application's (acquired after creating), 2: the driver's choice.
-    static int ExclusiveWanted() {
-        const char *v = getenv("NG2_EXCLUSIVE");
-        return (g_fullScreenExclusive && v) ? atoi(v) : 0;
-    }
 
     static uint32_t roundUp(uint32_t value, uint32_t powerOf2Alignment) {
         return (value + powerOf2Alignment - 1) & ~(powerOf2Alignment - 1);
@@ -2426,11 +2421,11 @@ namespace plume {
         }
         
 #   if defined(_WIN64)
-        if ((ExclusiveWanted() == 1) && !exclusiveHeld && (++exclusiveRetry % 180 == 0)) {
+        if (g_fullScreenExclusive && (exclusiveMode == 1) && !exclusiveHeld && (++exclusiveRetry % 180 == 0)) {
             const std::scoped_lock lock(vkMutex);
             VkResult got = vkAcquireFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
             exclusiveHeld = got == VK_SUCCESS;
-            if (exclusiveHeld) {
+            if (exclusiveHeld.load()) {
                 fprintf(stderr, "plume: full screen exclusive: yes, on a later try\n");
             } else if (exclusiveRetry % 1800 == 0) {
                 fprintf(stderr, "plume: full screen exclusive: still no (0x%X)\n", got);
@@ -2534,7 +2529,10 @@ namespace plume {
 #   if defined(_WIN64)
         VkSurfaceFullScreenExclusiveInfoEXT exclusiveInfo = {};
         VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveWin32 = {};
-        const int exclusive = ExclusiveWanted();
+        const int exclusive = g_fullScreenExclusive ? exclusiveMode : 0;
+        if (exclusiveHeld.load() && (exclusive != 1) && (vk != VK_NULL_HANDLE)) {
+            vkReleaseFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
+        }
         if (exclusive) {
             exclusiveWin32.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
             exclusiveWin32.hmonitor = MonitorFromWindow(HWND(renderWindow), MONITOR_DEFAULTTONEAREST);
@@ -2653,6 +2651,18 @@ namespace plume {
 
     bool VulkanSwapChain::isVsyncEnabled() const {
         return createdPresentMode == VK_PRESENT_MODE_FIFO_KHR;
+    }
+
+    void VulkanSwapChain::setFullScreenExclusive(int mode) {
+        exclusiveMode = mode;
+    }
+
+    bool VulkanSwapChain::isFullScreenExclusive() const {
+#   if defined(_WIN64)
+        return exclusiveHeld.load();
+#   else
+        return false;
+#   endif
     }
 
     uint32_t VulkanSwapChain::getWidth() const {

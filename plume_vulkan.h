@@ -226,7 +226,8 @@ namespace plume {
 
     struct VulkanSwapChain : RenderSwapChain {
         VkSwapchainKHR vk = VK_NULL_HANDLE;
-        bool exclusiveHeld = false;  // (VK_EXT_full_screen_exclusive, NG2_EXCLUSIVE=1)
+        int exclusiveMode = 0;  // (VK_EXT_full_screen_exclusive: setFullScreenExclusive)
+        std::atomic<bool> exclusiveHeld{false};
         uint32_t exclusiveRetry = 0;
         std::atomic<bool> acquireShortWaits{false};  // (setAcquireInShortWaits)
         VulkanCommandQueue *commandQueue = nullptr;
@@ -264,6 +265,8 @@ namespace plume {
         bool needsResize() const override;
         void setVsyncEnabled(bool vsyncEnabled) override;
         bool isVsyncEnabled() const override;
+        void setFullScreenExclusive(int mode) override;
+        bool isFullScreenExclusive() const override;
         bool setPresentMode(RenderPresentMode mode) override;
         uint32_t getWidth() const override;
         uint32_t getHeight() const override;
