@@ -284,7 +284,9 @@ namespace plume {
         SRC1_COLOR,
         INV_SRC1_COLOR,
         SRC1_ALPHA,
-        INV_SRC1_ALPHA
+        INV_SRC1_ALPHA,
+        BLEND_FACTOR_ALPHA,
+        INV_BLEND_FACTOR_ALPHA
     };
 
     enum class RenderBlendOperation {
@@ -1289,6 +1291,7 @@ namespace plume {
         float depthBiasClamp = 0.0f;
         float slopeScaledDepthBias = 0.0f;
         bool dynamicDepthBiasEnabled = false;
+        bool dynamicBlendConstantsEnabled = false;
         bool depthEnabled = false;
         bool depthWriteEnabled = false;
         bool stencilEnabled = false;

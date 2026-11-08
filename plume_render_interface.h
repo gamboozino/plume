@@ -156,6 +156,8 @@ namespace plume {
         virtual void setScissors(const RenderRect *scissorRects, uint32_t count) = 0;
         virtual void setFramebuffer(const RenderFramebuffer *framebuffer) = 0;
         virtual void setDepthBias(float depthBias, float depthBiasClamp, float slopeScaledDepthBias) = 0;
+        // For pipelines made with dynamicBlendConstantsEnabled (Vulkan only).
+        virtual void setBlendConstants(const float constants[4]) { (void)constants; }
         virtual void clearColor(uint32_t attachmentIndex = 0, RenderColor colorValue = RenderColor(), const RenderRect *clearRects = nullptr, uint32_t clearRectsCount = 0) = 0;
         virtual void clearDepthStencil(bool clearDepth = true, bool clearStencil = true, float depthValue = 1.0f, uint32_t stencilValue = 0, const RenderRect *clearRects = nullptr, uint32_t clearRectsCount = 0) = 0;
         virtual void copyBufferRegion(RenderBufferReference dstBuffer, RenderBufferReference srcBuffer, uint64_t size) = 0;

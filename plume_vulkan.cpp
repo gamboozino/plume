@@ -384,6 +384,10 @@ namespace plume {
             return VK_BLEND_FACTOR_SRC1_ALPHA;
         case RenderBlend::INV_SRC1_ALPHA:
             return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+        case RenderBlend::BLEND_FACTOR_ALPHA:
+            return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+        case RenderBlend::INV_BLEND_FACTOR_ALPHA:
+            return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
         default:
             assert(false && "Unknown blend factor.");
             return VK_BLEND_FACTOR_MAX_ENUM;
@@ -1643,6 +1647,10 @@ namespace plume {
 
         if (desc.dynamicDepthBiasEnabled) {
             dynamicStates.emplace_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+        }
+
+        if (desc.dynamicBlendConstantsEnabled) {
+            dynamicStates.emplace_back(VK_DYNAMIC_STATE_BLEND_CONSTANTS);
         }
 
         VkPipelineDynamicStateCreateInfo dynamicState = {};
@@ -3287,6 +3295,10 @@ namespace plume {
 
     void VulkanCommandList::setDepthBias(float depthBias, float depthBiasClamp, float slopeScaledDepthBias) {
         vkCmdSetDepthBias(vk, depthBias, depthBiasClamp, slopeScaledDepthBias);
+    }
+
+    void VulkanCommandList::setBlendConstants(const float constants[4]) {
+        vkCmdSetBlendConstants(vk, constants);
     }
 
     static void clearCommonRectVector(uint32_t width, uint32_t height, const RenderRect *clearRects, uint32_t clearRectsCount, std::vector<VkClearRect> &rectVector) {
