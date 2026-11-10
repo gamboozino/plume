@@ -226,7 +226,7 @@ namespace plume {
 
     struct VulkanSwapChain : RenderSwapChain {
         VkSwapchainKHR vk = VK_NULL_HANDLE;
-        int exclusiveMode = 0;  // (VK_EXT_full_screen_exclusive: setFullScreenExclusive)
+        std::atomic<int> exclusiveMode{0};  // (VK_EXT_full_screen_exclusive: setFullScreenExclusive; read by present)
         std::atomic<bool> exclusiveHeld{false};
         uint32_t exclusiveRetry = 0;
         std::atomic<bool> acquireShortWaits{false};  // (setAcquireInShortWaits)

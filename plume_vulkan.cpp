@@ -2421,7 +2421,7 @@ namespace plume {
         }
         
 #   if defined(_WIN64)
-        if (g_fullScreenExclusive && (exclusiveMode == 1) && !exclusiveHeld && (++exclusiveRetry % 180 == 0)) {
+        if (g_fullScreenExclusive && (exclusiveMode.load() == 1) && !exclusiveHeld && (++exclusiveRetry % 180 == 0)) {
             const std::scoped_lock lock(vkMutex);
             VkResult got = vkAcquireFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
             exclusiveHeld = got == VK_SUCCESS;
@@ -2529,9 +2529,12 @@ namespace plume {
 #   if defined(_WIN64)
         VkSurfaceFullScreenExclusiveInfoEXT exclusiveInfo = {};
         VkSurfaceFullScreenExclusiveWin32InfoEXT exclusiveWin32 = {};
-        const int exclusive = g_fullScreenExclusive ? exclusiveMode : 0;
-        if (exclusiveHeld.load() && (exclusive != 1) && (vk != VK_NULL_HANDLE)) {
+        const int exclusive = g_fullScreenExclusive ? exclusiveMode.load() : 0;
+        // The display let go by the old swapchain before the new one takes it
+        // (or isn't to have it).
+        if (exclusiveHeld.load() && (vk != VK_NULL_HANDLE)) {
             vkReleaseFullScreenExclusiveModeEXT(commandQueue->device->vk, vk);
+            exclusiveHeld = false;
         }
         if (exclusive) {
             exclusiveWin32.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT;
@@ -2546,6 +2549,7 @@ namespace plume {
 
         VkResult res = vkCreateSwapchainKHR(commandQueue->device->vk, &createInfo, nullptr, &vk);
 #   if defined(_WIN64)
+        createInfo.pNext = nullptr;  // (exclusiveInfo is gone after this call)
         exclusiveHeld = false;
         exclusiveRetry = 0;
         if ((exclusive == 1) && (res == VK_SUCCESS)) {
