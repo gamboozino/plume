@@ -237,6 +237,7 @@ namespace plume {
         std::unique_ptr<CocoaWindow> windowWrapper;
 #endif
         uint32_t textureCount = 0;
+        uint32_t minTextureCount = 1;  // the surface's minImageCount
         uint64_t presentCount = 0;
         RenderFormat format = RenderFormat::UNKNOWN;
         uint32_t width = 0;
@@ -272,6 +273,7 @@ namespace plume {
         uint32_t getHeight() const override;
         RenderTexture *getTexture(uint32_t textureIndex) override;
         uint32_t getTextureCount() const override;
+        uint32_t getMinTextureCount() const override;
         void setTextureCount(uint32_t count) override;
         bool acquireTexture(RenderCommandSemaphore *signalSemaphore, uint32_t *textureIndex) override;
         void setAcquireInShortWaits(bool shortWaits) override;

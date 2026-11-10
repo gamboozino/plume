@@ -2314,8 +2314,14 @@ namespace plume {
             return;
         }
 
-        // Make sure maxImageCount is never below minImageCount, as it's allowed to be zero.
+        // A maxImageCount of zero means no limit (gamescope's surfaces): taken as
+        // the minimum it asked for 3 images where 8 were wanted.
+        if (surfaceCapabilities.maxImageCount == 0) {
+            surfaceCapabilities.maxImageCount = UINT32_MAX;
+        }
         surfaceCapabilities.maxImageCount = std::max(surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
+
+        minTextureCount = std::max(surfaceCapabilities.minImageCount, 1u);
 
         // Clamp the requested buffer count between the bounds of the surface capabilities.
         this->textureCount = std::clamp(textureCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
@@ -2505,6 +2511,7 @@ namespace plume {
         // gamescope surface is mapped), so clamp again.
         VkSurfaceCapabilitiesKHR surfaceCapabilities = {};
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(commandQueue->device->physicalDevice, surface, &surfaceCapabilities);
+        minTextureCount = std::max(surfaceCapabilities.minImageCount, 1u);
         textureCount = std::max(textureCount, surfaceCapabilities.minImageCount);
         if (surfaceCapabilities.maxImageCount != 0) {
             textureCount = std::min(textureCount, surfaceCapabilities.maxImageCount);
@@ -2683,6 +2690,10 @@ namespace plume {
 
     uint32_t VulkanSwapChain::getTextureCount() const {
         return textureCount;
+    }
+
+    uint32_t VulkanSwapChain::getMinTextureCount() const {
+        return minTextureCount;
     }
 
     RenderWindow VulkanSwapChain::getWindow() const {

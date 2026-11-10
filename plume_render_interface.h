@@ -116,6 +116,9 @@ namespace plume {
         virtual uint32_t getHeight() const = 0;
         virtual RenderTexture *getTexture(uint32_t textureIndex) = 0;
         virtual uint32_t getTextureCount() const = 0;
+        // The surface's minImageCount: an acquire without a timeout may wait for
+        // ever once more than getTextureCount() minus it are held.
+        virtual uint32_t getMinTextureCount() const { return 1; }
         // Images asked for from the next resize (the surface's limits still apply).
         virtual void setTextureCount(uint32_t count) { (void)count; }
         // Full screen exclusive (Windows, VK_EXT_full_screen_exclusive), from the
