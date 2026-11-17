@@ -913,6 +913,9 @@ namespace plume {
         RenderHeapType heapType = RenderHeapType::UNKNOWN;
         RenderBufferFlags flags = RenderBufferFlag::NONE;
         bool committed = false;
+        // UPLOAD only: in system memory even when the GPU reads it directly (by default such a
+        // buffer may go to VRAM through the PCIe BAR, where CPU writes are slow on narrow links).
+        bool preferHost = false;
 
         RenderBufferDesc() = default;
 

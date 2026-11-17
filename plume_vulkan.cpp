@@ -901,6 +901,9 @@ namespace plume {
         case RenderHeapType::UPLOAD:
             bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
             createInfo.flags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+            if (desc.preferHost) {
+                createInfo.usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+            }
             break;
         case RenderHeapType::READBACK:
             bufferInfo.usage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
