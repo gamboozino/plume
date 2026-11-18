@@ -68,11 +68,15 @@ endif()
 # Create target
 add_library(plume STATIC ${PLUME_SOURCES})
 
-# Include directories
+# Include directories (PLUME_VULKAN_HEADERS: a newer Vulkan-Headers include
+# directory, for extensions the bundled one lacks)
+if(NOT PLUME_VULKAN_HEADERS)
+    set(PLUME_VULKAN_HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/contrib/Vulkan-Headers/include)
+endif()
 target_include_directories(plume PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/contrib/volk
-    ${CMAKE_CURRENT_SOURCE_DIR}/contrib/Vulkan-Headers/include
+    ${PLUME_VULKAN_HEADERS}
     ${CMAKE_CURRENT_SOURCE_DIR}/contrib/VulkanMemoryAllocator/include
 )
 
