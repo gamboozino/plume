@@ -101,6 +101,17 @@ namespace plume {
         // synchronizes them externally), so a wait would hold up presents.
         virtual uint64_t getPresentId() const { return 0; }
         virtual int pollPresent(uint64_t presentId) { return -1; }
+        // VK_EXT_present_timing, asked for from the next resize: wait and
+        // pollPresent then go by when frames reached the screen as the
+        // compositor reports it (gamescope's present_wait reports when it took
+        // the frame) where the surface offers it. hasPresentTiming: in use now.
+        // getPresentTime: when that present's first pixel went out (or became
+        // visible), CLOCK_MONOTONIC ns, 0 not known (yet). getRefreshDuration:
+        // the display's refresh, ns (0 not known).
+        virtual void setPresentTiming(bool on) { (void)on; }
+        virtual bool hasPresentTiming() const { return false; }
+        virtual int64_t getPresentTime(uint64_t presentId) { (void)presentId; return 0; }
+        virtual uint64_t getRefreshDuration() { return 0; }
         virtual bool resize() = 0;
         virtual bool needsResize() const = 0;
         virtual void setVsyncEnabled(bool vsyncEnabled) = 0;

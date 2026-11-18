@@ -1920,6 +1920,9 @@ namespace plume {
         // Present.
         bool presentWait = false;
         bool displayTiming = false;
+        // VK_EXT_present_timing (with VK_KHR_present_id2): when frames reach the
+        // screen, from the compositor (RenderSwapChain::setPresentTiming).
+        bool presentTiming = false;
 
         // Framebuffers.
         uint64_t maxTextureSize = 0;

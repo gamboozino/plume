@@ -254,6 +254,28 @@ namespace plume {
         bool immediatePresentModeSupported = false;
         std::vector<VkPresentModeKHR> supportedPresentModes;
         uint32_t maxFrameLatency = 0;
+        // VK_EXT_present_timing (setPresentTiming): asked for; in use on this
+        // VkSwapchainKHR, its time domain and the stage asked about; the last
+        // present reported (shown or skipped) and the times of recent ones.
+        std::atomic<bool> timingWanted{false};
+        std::atomic<bool> timingActive{false};
+        uint64_t timingDomainId = 0;
+        bool timingMonotonic = false;
+        // (a swapchain or present stage time domain: its times moved to
+        // CLOCK_MONOTONIC's by an offset, from calibrated timestamps every second)
+        VkTimeDomainKHR timingDomainKind = VK_TIME_DOMAIN_DEVICE_KHR;
+        std::atomic<int64_t> timingOffset{0};
+        std::atomic<bool> timingCalibrated{false};
+        int64_t timingCalibratedAt = 0;
+        void calibrateTimings();
+        VkPresentStageFlagsEXT timingStage = 0;
+        std::atomic<uint64_t> timingShownId{0};
+        uint64_t lastTimedId = 0;  // (the last present sent with timing info)
+        static constexpr uint32_t TimingRing = 64;
+        std::atomic<uint64_t> timingIds[TimingRing] = {};
+        std::atomic<int64_t> timingTimes[TimingRing] = {};
+        uint64_t timingRefresh = 0;
+        void collectTimings();
 
         VulkanSwapChain(VulkanCommandQueue *commandQueue, RenderWindow renderWindow, uint32_t textureCount, RenderFormat format, uint32_t maxFrameLatency);
         ~VulkanSwapChain() override;
@@ -262,6 +284,10 @@ namespace plume {
         void setMaxFrameLatency(uint32_t maxFrameLatency) override;
         uint64_t getPresentId() const override;
         int pollPresent(uint64_t presentId) override;
+        void setPresentTiming(bool on) override;
+        bool hasPresentTiming() const override;
+        int64_t getPresentTime(uint64_t presentId) override;
+        uint64_t getRefreshDuration() override;
         bool resize() override;
         bool needsResize() const override;
         void setVsyncEnabled(bool vsyncEnabled) override;
@@ -434,6 +460,11 @@ namespace plume {
         uint32_t queueFamilyIndices[3] = {};
         std::vector<VulkanQueueFamily> queueFamilies;
         RenderDeviceCapabilities capabilities;
+        // VK_EXT_present_timing's (loaded by hand: volk predates it)
+        PFN_vkSetSwapchainPresentTimingQueueSizeEXT setPresentTimingQueueSize = nullptr;
+        PFN_vkGetSwapchainTimingPropertiesEXT getSwapchainTimingProperties = nullptr;
+        PFN_vkGetSwapchainTimeDomainPropertiesEXT getSwapchainTimeDomainProperties = nullptr;
+        PFN_vkGetPastPresentationTimingEXT getPastPresentationTiming = nullptr;
         RenderDeviceDescription description;
         VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtPipelineProperties = {};
         VkPhysicalDeviceSampleLocationsPropertiesEXT sampleLocationProperties = {};
