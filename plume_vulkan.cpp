@@ -2681,6 +2681,50 @@ namespace plume {
             }
             return;
         }
+#if defined(_WIN32)
+        // NVIDIA's Windows driver spins in vkWaitForPresentKHR: the wait took
+        // most of a core (with a 4-core CPU, time the game's threads needed).
+        // There it's polled instead, the lock let go in between.
+        if (commandQueue->device->description.vendor == RenderDeviceVendor::NVIDIA) {
+            uint64_t target = 0;
+            {
+                const std::scoped_lock lock(vkMutex);
+                const uint64_t id = currentPresentId.load();
+                if (!commandQueue->device->capabilities.presentWait || (id < maxFrameLatency) ||
+                    (id - (maxFrameLatency - 1) < firstPresentId)) {
+                    return;
+                }
+                target = id - (maxFrameLatency - 1);
+            }
+            const auto until = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+            while (std::chrono::steady_clock::now() < until) {
+                {
+                    const std::scoped_lock lock(vkMutex);
+                    if (vk == VK_NULL_HANDLE || target < firstPresentId) {
+                        return;
+                    }
+                    if (vkWaitForPresentKHR(commandQueue->device->vk, vk, target, 0) != VK_TIMEOUT) {
+                        return;
+                    }
+                }
+                // (a high-resolution timer: Sleep's whole milliseconds would
+                // add 1-2 ms to Input Latency Low)
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
+                thread_local HANDLE timer = CreateWaitableTimerExW(
+                    nullptr, nullptr, CREATE_WAITABLE_TIMER_HIGH_RESOLUTION, TIMER_ALL_ACCESS);
+                LARGE_INTEGER due;
+                due.QuadPart = -2500;  // 250 us, in 100 ns units, relative
+                if (timer && SetWaitableTimer(timer, &due, 0, nullptr, nullptr, FALSE)) {
+                    WaitForSingleObject(timer, INFINITE);
+                } else {
+                    std::this_thread::sleep_for(std::chrono::microseconds(250));
+                }
+            }
+            return;
+        }
+#endif
         const std::scoped_lock lock(vkMutex);
         const uint64_t id = currentPresentId.load();
         if (commandQueue->device->capabilities.presentWait && (id >= maxFrameLatency) &&
