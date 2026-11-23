@@ -1308,6 +1308,8 @@ namespace plume {
         RenderStencilFaceDesc stencilBackFace;
         RenderMultisampling multisampling;
         bool alphaToCoverageEnabled = false;
+        // Run the pixel shader once per sample (capabilities.sampleRateShading; Vulkan only).
+        bool sampleShadingEnabled = false;
         // Ask the driver to keep the pipeline's statistics (capabilities.pipelineExecutableInfo).
         bool captureStatistics = false;
         RenderPrimitiveTopology primitiveTopology = RenderPrimitiveTopology::TRIANGLE_LIST;
@@ -1906,6 +1908,9 @@ namespace plume {
 
         // MSAA.
         bool sampleLocations = false;
+
+        // Pipelines can run the pixel shader once per sample (sampleShadingEnabled).
+        bool sampleRateShading = false;
 
         // Resolve Modes.
         bool resolveModes = false;

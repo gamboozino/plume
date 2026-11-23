@@ -1615,6 +1615,10 @@ namespace plume {
         multisampling.pNext = multisamplingNext;
         multisampling.rasterizationSamples = VkSampleCountFlagBits(desc.multisampling.sampleCount);
         multisampling.alphaToCoverageEnable = desc.alphaToCoverageEnabled;
+        if (desc.sampleShadingEnabled && desc.multisampling.sampleCount > 1 && device->capabilities.sampleRateShading) {
+            multisampling.sampleShadingEnable = VK_TRUE;
+            multisampling.minSampleShading = 1.0f;
+        }
 
         thread_local std::vector<VkPipelineColorBlendAttachmentState> colorBlendAttachments;
         colorBlendAttachments.clear();
@@ -4775,6 +4779,7 @@ namespace plume {
         capabilities.raytracing = rtSupported;
         capabilities.raytracingStateUpdate = false;
         capabilities.sampleLocations = sampleLocationsSupported;
+        capabilities.sampleRateShading = deviceFeatures.features.sampleRateShading;
         capabilities.resolveModes = false;
         capabilities.descriptorIndexing = descriptorIndexing;
         capabilities.scalarBlockLayout = scalarBlockLayout;
