@@ -133,7 +133,9 @@ namespace plume {
         // Images asked for from the next resize (the surface's limits still apply).
         virtual void setTextureCount(uint32_t count) { (void)count; }
         // Full screen exclusive (Windows, VK_EXT_full_screen_exclusive), from the
-        // next resize: 0 off, 1 taken by the application, 2 left to the driver.
+        // next resize: 0 not asked (the driver's default), 1 taken by the
+        // application, 2 left to the driver, 3 never (a window covering the
+        // screen stays composed, as screen capture needs).
         virtual void setFullScreenExclusive(int mode) { (void)mode; }
         // Whether the swapchain holds the display now (taken, and not lost since).
         virtual bool isFullScreenExclusive() const { return false; }

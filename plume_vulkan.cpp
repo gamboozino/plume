@@ -2824,8 +2824,9 @@ namespace plume {
             exclusiveWin32.hmonitor = MonitorFromWindow(HWND(renderWindow), MONITOR_DEFAULTTONEAREST);
             exclusiveInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
             exclusiveInfo.pNext = &exclusiveWin32;
-            exclusiveInfo.fullScreenExclusive = exclusive == 1 ? VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
-                                                               : VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
+            exclusiveInfo.fullScreenExclusive = exclusive == 1   ? VK_FULL_SCREEN_EXCLUSIVE_APPLICATION_CONTROLLED_EXT
+                                                : exclusive == 3 ? VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT
+                                                                 : VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT;
             createInfo.pNext = &exclusiveInfo;
         }
 #   endif
